@@ -36,7 +36,7 @@ jobs:
 
             echo "--- Processing Repository: $repo_name ---"
 
-            DEPENDENT_REPO_URL="https://${{ github.actor }}:${PAT}@github.com/YourOrg/$repo_name.git"
+            DEPENDENT_REPO_URL="https://${{ github.actor }}:${PAT}@github.com/cybrodevelopers/$repo_name.git"
             git clone $DEPENDENT_REPO_URL $repo_name
 
             cd $repo_name
