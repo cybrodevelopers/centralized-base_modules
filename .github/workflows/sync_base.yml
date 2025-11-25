@@ -1,10 +1,8 @@
 name: Auto-Sync Submodules to Dependents
-
 on:
   push:
     branches:
       - main
-
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -18,10 +16,13 @@ jobs:
       - name: Define Dependent Repositories
         id: dependents
         run: |
-          echo "repos={
-            \"centralized_project_01\": \"centralized-base_modules\",
-            \"centralized_project_02\": \"centralized-base_modules\"
-          }" >> $GITHUB_OUTPUT
+          REPOS_JSON=$(echo '{ "centralized_project_01": "centralized-base_modules", "centralized_project_02": "centralized-base_modules" }' | jq -c)
+          echo "repos=$REPOS_JSON" >> $GITHUB_OUTPUT
+
+      - name: Install JQ (for parsing JSON output)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
 
       - name: Update Submodules in Dependent Repos
         env:
@@ -42,18 +43,17 @@ jobs:
 
             git checkout main
 
-            git submodule set-url $submodule_path $DEPENDENT_REPO_URL
             git submodule update --init --recursive
 
             git -C $submodule_path reset --hard $BASE_REPO_COMMIT
 
             if [[ $(git status --porcelain) ]]; then
                 git add $submodule_path
-                git commit -m "chore(deps): Auto-sync base_module_repo to commit $BASE_REPO_COMMIT"
+                git commit -m "chore(deps): Auto-sync base repository to commit $BASE_REPO_COMMIT"
                 git push origin main
                 echo "Successfully updated and pushed change to $repo_name."
             else
-                echo "Submodule pointer already at the latest commit in $repo_name. No push needed."
+                echo "Submodule pointer already at commit $BASE_REPO_COMMIT in $repo_name. No push needed."
             fi
 
             cd ..
