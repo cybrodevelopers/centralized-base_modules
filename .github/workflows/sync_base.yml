@@ -1,0 +1,62 @@
+name: Auto-Sync Submodules to Dependents
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Configure Git for PAT
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Define Dependent Repositories
+        id: dependents
+        run: |
+          echo "repos={
+            \"centralized_project_01\": \"centralized-base_modules\",
+            \"centralized_project_02\": \"centralized-base_modules\"
+          }" >> $GITHUB_OUTPUT
+
+      - name: Update Submodules in Dependent Repos
+        env:
+          PAT: ${{ secrets.GH_PAT }}
+          BASE_REPO_COMMIT: ${{ github.sha }}
+        run: |
+          DEPS='${{ steps.dependents.outputs.repos }}'
+
+          for repo_name in $(echo $DEPS | jq -r 'keys[]'); do
+            submodule_path=$(echo $DEPS | jq -r ".[\"$repo_name\"]")
+
+            echo "--- Processing Repository: $repo_name ---"
+
+            DEPENDENT_REPO_URL="https://${{ github.actor }}:${PAT}@github.com/YourOrg/$repo_name.git"
+            git clone $DEPENDENT_REPO_URL $repo_name
+
+            cd $repo_name
+
+            git checkout main
+
+            git submodule set-url $submodule_path $DEPENDENT_REPO_URL
+            git submodule update --init --recursive
+
+            git -C $submodule_path reset --hard $BASE_REPO_COMMIT
+
+            if [[ $(git status --porcelain) ]]; then
+                git add $submodule_path
+                git commit -m "chore(deps): Auto-sync base_module_repo to commit $BASE_REPO_COMMIT"
+                git push origin main
+                echo "Successfully updated and pushed change to $repo_name."
+            else
+                echo "Submodule pointer already at the latest commit in $repo_name. No push needed."
+            fi
+
+            cd ..
+            rm -rf $repo_name
+
+          done
