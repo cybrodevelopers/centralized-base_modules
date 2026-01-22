@@ -2,9 +2,9 @@ name: Odoo Code Quality Check
 
 on:
   push:
-    branches: ["dev"]
+    branches: ["main"]
   pull_request:
-    branches: ["dev"]
+    branches: ["main"]
 
 jobs:
   lint:
@@ -31,7 +31,7 @@ jobs:
 
       - name: MERGE Histories (Prepare Files)
         id: merge
-        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           REPO_TOKEN: ${{ secrets.TOKEN_GH }}
         run: |
